@@ -23,8 +23,12 @@ module.exports = function (context) {
     const usesNewStructure = fs.existsSync(path.join(projectRoot, 'platforms', 'android', 'app'));
     const basePath = usesNewStructure ? path.join(projectRoot, 'platforms', 'android', 'app', 'src', 'main') : path.join(projectRoot, 'platforms', 'android');
     var configPath = path.join(basePath, 'res', 'xml', 'config.xml');
-    var stringsPath = path.join(basePath, 'res', 'values', 'strings.xml');
-    var stringsXml, name;
+    
+    // O Cordova moderno no MABS usa cdv_strings.xml em vez de strings.xml para o nome do app
+    var stringsPath = path.join(basePath, 'res', 'values', 'cdv_strings.xml');
+    if (!fs.existsSync(stringsPath)) {
+        stringsPath = path.join(basePath, 'res', 'values', 'strings.xml');
+    }
 
     // make sure the android config file exists
     try {
@@ -34,33 +38,62 @@ module.exports = function (context) {
         return;
     }
 
-    name = getConfigParser(context, configPath).getPreference('AppName');
+    var name;
+    try {
+        name = getConfigParser(context, configPath).getPreference('AppName');
+    } catch(e) {
+        console.error('Error parsing config.xml for AppName preference:', e);
+        return;
+    }
 
     if (name) {
-        stringsXml = fs.readFileSync(stringsPath, 'UTF-8');
+        var stringsXml;
+        try {
+            if (!fs.existsSync(stringsPath)) {
+                console.warn(`Warning: Neither cdv_strings.xml nor strings.xml found at ${stringsPath}. Skipping name update.`);
+                return;
+            }
+            stringsXml = fs.readFileSync(stringsPath, 'UTF-8');
+        } catch(e) {
+            console.error(`Error reading strings file at ${stringsPath}:`, e);
+            return;
+        }
+
         parser.parseString(stringsXml, function (err, data) {
+            if (err) {
+                console.error('Error parsing XML data:', err);
+                return;
+            }
 
-            data.resources.string.forEach(function (string) {
+            if (data && data.resources && data.resources.string) {
+                data.resources.string.forEach(function (string) {
+                    if (string.$ && (string.$.name === 'app_name' || string.$.name === 'launcher_name')) {
+                        console.log('Setting App Name to: ', name);
+                        string._ = name;
+                    }
+                });
 
-                if (string.$.name === 'app_name') {
-
-                    console.log('Setting App Name: ', name);
-                    string._ = name;
+                try {
+                    fs.writeFileSync(stringsPath, builder.buildObject(data));
+                } catch(e) {
+                    console.error(`Error writing updated XML to ${stringsPath}:`, e);
                 }
-            });
-
-            fs.writeFileSync(stringsPath, builder.buildObject(data));
-
+            }
         });
     }
 };
 
 function getConfigParser(context, config) {
-
-    if (semver.lt(context.opts.cordova.version, '5.4.0')) {
-        ConfigParser = context.requireCordovaModule('cordova-lib/src/ConfigParser/ConfigParser');
-    } else {
-        ConfigParser = context.requireCordovaModule('cordova-common/src/ConfigParser/ConfigParser');
+    var ConfigParser;
+    try {
+        if (semver.lt(context.opts.cordova.version, '5.4.0')) {
+            ConfigParser = context.requireCordovaModule('cordova-lib/src/ConfigParser/ConfigParser');
+        } else {
+            ConfigParser = context.requireCordovaModule('cordova-common/src/ConfigParser/ConfigParser');
+        }
+    } catch (e) {
+        // Fallback seguro se requireCordovaModule falhar em ambientes estritos
+        ConfigParser = require('cordova-common').ConfigParser;
     }
 
     return new ConfigParser(config);
