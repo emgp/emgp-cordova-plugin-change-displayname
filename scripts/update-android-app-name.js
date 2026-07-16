@@ -17,7 +17,7 @@ module.exports = function (context) {
     if(context.opts.platforms.indexOf('android') === -1) return;
 
     console.log('Attempting to set app name for android');
-
+    console.log(`context ${context}`)
     var projectRoot = context.opts.projectRoot;
     console.log(`projectRoot ${projectRoot}`);
     const usesNewStructure = fs.existsSync(path.join(projectRoot, 'platforms', 'android', 'app'));
