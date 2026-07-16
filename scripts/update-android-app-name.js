@@ -17,21 +17,32 @@ module.exports = function (context) {
     if(context.opts.platforms.indexOf('android') === -1) return;
 
     console.log('Attempting to set app name for android');
-    console.log(`context ${context}`)
-    var projectRoot = context.opts.projectRoot;
+    
+    //var projectRoot = context.opts.projectRoot;
+    var projectRoot = context.opts.projectRoot || process.cwd();
     console.log(`projectRoot ${projectRoot}`);
+
+    if (typeof projectRoot !== 'string') {
+        console.error('Erro: projectRoot inválido. Abortando.');
+        return;
+    }
+    
     const usesNewStructure = fs.existsSync(path.join(projectRoot, 'platforms', 'android', 'app'));
-    console.log(`usesNewStructure ${usesNewStructure}`);
-    const basePath = usesNewStructure ? path.join(projectRoot, 'platforms', 'android', 'app', 'src', 'main') : path.join(projectRoot, 'platforms', 'android');
-    console.log(`basePath ${basePath}`);
+    console.log('usesNewStructure:', usesNewStructure);
+
+    const basePath = usesNewStructure 
+        ? path.join(projectRoot, 'platforms', 'android', 'app', 'src', 'main') 
+        : path.join(projectRoot, 'platforms', 'android');
+    console.log('basePath:', basePath);
+
     var configPath = path.join(basePath, 'res', 'xml', 'config.xml');
-    console.log(`configPath ${configPath}`);
-    // O Cordova moderno no MABS usa cdv_strings.xml em vez de strings.xml para o nome do app
+    console.log('configPath:', configPath);
+
     var stringsPath = path.join(basePath, 'res', 'values', 'cdv_strings.xml');
     if (!fs.existsSync(stringsPath)) {
         stringsPath = path.join(basePath, 'res', 'values', 'strings.xml');
     }
-    console.log(`stringsPath ${stringsPath}`);
+    console.log('stringsPath:', stringsPath);
     // make sure the android config file exists
     try {
         fs.accessSync(configPath, fs.F_OK);
