@@ -19,7 +19,7 @@ module.exports = function (context) {
     console.log('Attempting to set app name for android');
     
     //var projectRoot = context.opts.projectRoot;
-    var projectRoot = context.opts.projectRoot || process.cwd();e
+    var projectRoot = context.opts.projectRoot || process.cwd();
 
     if (typeof projectRoot !== 'string') {
         console.error('Error: invalid projectRoot. Aborting...');
